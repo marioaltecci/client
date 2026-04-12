@@ -61,25 +61,26 @@ class MainComposeActivity : ComponentActivity() {
             DroidifyTheme {
                 val navController = rememberNavController()
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+                    
+                    // Predictive back gesture for Android 14+
+                    PredictiveBackHandler(enabled = true) { progressFlow ->
+                        try {
+                            progressFlow.collect { backEvent ->
+                                // progress: 0f -> 1f as user swipes from edge
+                            }
+                            if (!navController.popBackStack()) {
+                                finish()
+                            }
+                        } catch (e: CancellationException) {
+                            // Gesture cancelled, do nothing
+                        }
+                    }
+                    
                     NavHost(
                         modifier = Modifier.padding(innerPadding),
                         navController = navController,
                         startDestination = AppList,
                     ) {
-                        // Predictive back gesture for Android 14+
-                        PredictiveBackHandler(enabled = true) { progressFlow ->
-                            try {
-                                progressFlow.collect { backEvent ->
-                                    // progress: 0f -> 1f as user swipes from edge
-                                }
-                                if (!navController.popBackStack()) {
-                                    finish()
-                                }
-                            } catch (e: CancellationException) {
-                                // Gesture cancelled, do nothing
-                            }
-                        }
-
                         home(
                             onNavigateToApps = { navController.navigateToAppList() },
                             onNavigateToRepos = { navController.navigateToRepoList() },
