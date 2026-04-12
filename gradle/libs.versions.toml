@@ -40,6 +40,7 @@ compose-material = "1.5.0-alpha15"
 compose-navigation = "2.9.7"
 
 [libraries]
+"androidx.activity", name = "activity-ktx", version.ref = "activityVersion" }
 desugaring = { group = "com.android.tools", name = "desugar_jdk_libs", version.ref = "desugaring" }
 material = { group = "com.google.android.material", name = "material", version.ref = "material" }
 activity = { group = "androidx.activity", name = "activity", version.ref = "activity" }
