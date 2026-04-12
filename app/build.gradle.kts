@@ -134,6 +134,8 @@ dependencies {
     implementation(libs.recyclerview)
     implementation(libs.sqlite.ktx)
 
+    implementation(libs.androidx.activity.ktx)
+
     implementation(libs.image.viewer)
     implementation(libs.bundles.coil)
 
