@@ -6,6 +6,8 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.gestures.draggable
+import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -14,7 +16,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.rememberNavController
@@ -64,11 +67,28 @@ class MainComposeActivity : ComponentActivity() {
         setContent {
             DroidifyTheme {
                 val navController = rememberNavController()
+                var dragOffset by remember { mutableStateOf(0f) }
                 
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     
-                    Box(modifier = Modifier.fillMaxSize()) {
-                        // Main content
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .draggable(
+                                state = rememberDraggableState { delta ->
+                                    dragOffset += delta
+                                },
+                                onDragStopped = { velocity ->
+                                    if (dragOffset > 100f) {
+                                        if (!navController.popBackStack()) {
+                                            finish()
+                                        }
+                                    }
+                                    dragOffset = 0f
+                                },
+                                startDragImmediately = false
+                            )
+                    ) {
                         NavHost(
                             modifier = Modifier.padding(innerPadding),
                             navController = navController,
@@ -107,43 +127,6 @@ class MainComposeActivity : ComponentActivity() {
 
                             settings(onBackClick = { navController.popBackStack() })
                         }
-                        
-                        // Simple swipe back detection
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .pointerInput(Unit) {
-                                    var startX = 0f
-                                    var startY = 0f
-                                    
-                                    while (true) {
-                                        val event = awaitPointerEvent(pass = PointerEventPass.Initial)
-                                        val change = event.changes.firstOrNull() ?: continue
-                                        
-                                        if (change.pressed && startX == 0f) {
-                                            startX = change.position.x
-                                            startY = change.position.y
-                                        }
-                                        
-                                        if (!change.pressed && startX != 0f) {
-                                            val endX = change.position.x
-                                            val deltaX = endX - startX
-                                            val deltaY = kotlin.math.abs(change.position.y - startY)
-                                            
-                                            // Swipe right > 100px and not too much vertical movement
-                                            if (deltaX > 100 && deltaY < 200) {
-                                                if (!navController.popBackStack()) {
-                                                    finish()
-                                                }
-                                            }
-                                            startX = 0f
-                                            startY = 0f
-                                        }
-                                        
-                                        change.consume()
-                                    }
-                                }
-                        )
                     }
                     
                     // System back button compatibility
