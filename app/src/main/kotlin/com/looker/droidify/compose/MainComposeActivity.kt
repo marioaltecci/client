@@ -6,10 +6,16 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.rememberNavController
@@ -59,52 +65,87 @@ class MainComposeActivity : ComponentActivity() {
         setContent {
             DroidifyTheme {
                 val navController = rememberNavController()
+                val configuration = LocalConfiguration.current
+                val edgeThreshold = 50.dp // Only detect swipe from left edge
+                
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     
-                    // Simple back gesture - works on all Android versions
+                    // Manual back swipe (works even when system gestures are off)
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        // Transparent overlay that detects swipe from left edge
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .pointerInput(Unit) {
+                                    detectHorizontalDragGestures(
+                                        onDragStart = { offset ->
+                                            // Only react if drag starts near left edge
+                                            if (offset.x <= edgeThreshold.toPx()) {
+                                                // Allow swipe detection
+                                            }
+                                        },
+                                        onHorizontalDrag = { change, dragAmount ->
+                                            change.consume()
+                                        },
+                                        onDragEnd = { },
+                                        onDragCancel = { }
+                                    ) { _, dragAmount ->
+                                        // Trigger back on left-to-right swipe from edge
+                                        if (dragAmount > 100f) {
+                                            if (!navController.popBackStack()) {
+                                                finish()
+                                            }
+                                        }
+                                    }
+                                }
+                        )
+                        
+                        // Main content
+                        NavHost(
+                            modifier = Modifier.padding(innerPadding),
+                            navController = navController,
+                            startDestination = AppList,
+                        ) {
+                            home(
+                                onNavigateToApps = { navController.navigateToAppList() },
+                                onNavigateToRepos = { navController.navigateToRepoList() },
+                                onNavigateToSettings = { navController.navigateToSettings() },
+                            )
+                            appList(
+                                onAppClick = { packageName ->
+                                    navController.navigateToAppDetail(packageName)
+                                },
+                                onNavigateToRepos = { navController.navigateToRepoList() },
+                                onNavigateToSettings = { navController.navigateToSettings() },
+                            )
+
+                            repoList(
+                                onRepoClick = { repoId -> navController.navigateToRepoDetail(repoId) },
+                                onBackClick = { navController.popBackStack() }
+                            )
+
+                            appDetail(
+                                onBackClick = { navController.popBackStack() },
+                            )
+
+                            repoDetail(
+                                onBackClick = { navController.popBackStack() },
+                                onEditClick = { repoId ->
+                                    navController.navigateToRepoEdit(repoId)
+                                },
+                            )
+
+                            repoEdit(onBackClick = { navController.popBackStack() })
+
+                            settings(onBackClick = { navController.popBackStack() })
+                        }
+                    }
+                    
+                    // Keep BackHandler for system back button/gesture compatibility
                     BackHandler(enabled = true) {
                         if (!navController.popBackStack()) {
                             finish()
                         }
-                    }
-                    
-                    NavHost(
-                        modifier = Modifier.padding(innerPadding),
-                        navController = navController,
-                        startDestination = AppList,
-                    ) {
-                        home(
-                            onNavigateToApps = { navController.navigateToAppList() },
-                            onNavigateToRepos = { navController.navigateToRepoList() },
-                            onNavigateToSettings = { navController.navigateToSettings() },
-                        )
-                        appList(
-                            onAppClick = { packageName ->
-                                navController.navigateToAppDetail(packageName)
-                            },
-                            onNavigateToRepos = { navController.navigateToRepoList() },
-                            onNavigateToSettings = { navController.navigateToSettings() },
-                        )
-
-                        repoList(
-                            onRepoClick = { repoId -> navController.navigateToRepoDetail(repoId) },
-                            onBackClick = { navController.popBackStack() }
-                        )
-
-                        appDetail(
-                            onBackClick = { navController.popBackStack() },
-                        )
-
-                        repoDetail(
-                            onBackClick = { navController.popBackStack() },
-                            onEditClick = { repoId ->
-                                navController.navigateToRepoEdit(repoId)
-                            },
-                        )
-
-                        repoEdit(onBackClick = { navController.popBackStack() })
-
-                        settings(onBackClick = { navController.popBackStack() })
                     }
                 }
             }
