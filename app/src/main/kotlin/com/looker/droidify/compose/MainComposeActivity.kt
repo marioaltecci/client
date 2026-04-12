@@ -6,6 +6,7 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.Box
@@ -14,10 +15,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.rememberNavController
@@ -75,18 +72,18 @@ class MainComposeActivity : ComponentActivity() {
                         modifier = Modifier
                             .fillMaxSize()
                             .draggable(
+                                orientation = Orientation.Horizontal,
                                 state = rememberDraggableState { delta ->
                                     dragOffset += delta
                                 },
-                                onDragStopped = { velocity ->
+                                onDragStopped = {
                                     if (dragOffset > 100f) {
                                         if (!navController.popBackStack()) {
                                             finish()
                                         }
                                     }
                                     dragOffset = 0f
-                                },
-                                startDragImmediately = false
+                                }
                             )
                     ) {
                         NavHost(
