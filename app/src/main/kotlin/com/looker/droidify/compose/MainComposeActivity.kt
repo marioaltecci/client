@@ -6,7 +6,6 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -14,6 +13,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.lifecycleScope
@@ -66,40 +66,11 @@ class MainComposeActivity : ComponentActivity() {
             DroidifyTheme {
                 val navController = rememberNavController()
                 val configuration = LocalConfiguration.current
-                val edgeThreshold = 50.dp // Only detect swipe from left edge
+                val edgeThreshold = 50f // pixels from left edge
                 
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     
-                    // Manual back swipe (works even when system gestures are off)
                     Box(modifier = Modifier.fillMaxSize()) {
-                        // Transparent overlay that detects swipe from left edge
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .pointerInput(Unit) {
-                                    detectHorizontalDragGestures(
-                                        onDragStart = { offset ->
-                                            // Only react if drag starts near left edge
-                                            if (offset.x <= edgeThreshold.toPx()) {
-                                                // Allow swipe detection
-                                            }
-                                        },
-                                        onHorizontalDrag = { change, dragAmount ->
-                                            change.consume()
-                                        },
-                                        onDragEnd = { },
-                                        onDragCancel = { }
-                                    ) { _, dragAmount ->
-                                        // Trigger back on left-to-right swipe from edge
-                                        if (dragAmount > 100f) {
-                                            if (!navController.popBackStack()) {
-                                                finish()
-                                            }
-                                        }
-                                    }
-                                }
-                        )
-                        
                         // Main content
                         NavHost(
                             modifier = Modifier.padding(innerPadding),
@@ -139,9 +110,47 @@ class MainComposeActivity : ComponentActivity() {
 
                             settings(onBackClick = { navController.popBackStack() })
                         }
+                        
+                        // Transparent overlay for swipe detection
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .pointerInput(Unit) {
+                                    var startX = 0f
+                                    awaitEachGesture {
+                                        val down = awaitFirstDown(requireUnconsumed = false)
+                                        startX = down.position.x
+                                        
+                                        if (startX <= edgeThreshold) {
+                                            var totalDrag = 0f
+                                            do {
+                                                val event = awaitPointerEvent()
+                                                val change = event.changes.first()
+                                                val drag = change.positionChange().x
+                                                if (drag > 0) { // Only track rightward drag
+                                                    totalDrag += drag
+                                                }
+                                                change.consume()
+                                            } while (event.changes.any { it.pressed })
+                                            
+                                            if (totalDrag > 100f) {
+                                                if (!navController.popBackStack()) {
+                                                    finish()
+                                                }
+                                            }
+                                        } else {
+                                            // Consume all events to prevent interfering with other gestures
+                                            do {
+                                                val event = awaitPointerEvent()
+                                                event.changes.forEach { it.consume() }
+                                            } while (event.changes.any { it.pressed })
+                                        }
+                                    }
+                                }
+                        )
                     }
                     
-                    // Keep BackHandler for system back button/gesture compatibility
+                    // Keep BackHandler for system back button compatibility
                     BackHandler(enabled = true) {
                         if (!navController.popBackStack()) {
                             finish()
