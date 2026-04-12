@@ -1,21 +1,21 @@
 package com.looker.droidify.compose
 
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.ui.input.pointer.awaitPointerEvent
-import androidx.compose.ui.input.pointer.pointerInput
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.awaitPointerEvent
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.platform.LocalConfiguration
@@ -69,8 +69,7 @@ class MainComposeActivity : ComponentActivity() {
         setContent {
             DroidifyTheme {
                 val navController = rememberNavController()
-                val configuration = LocalConfiguration.current
-                val edgeThreshold = 50f // pixels from left edge
+                val edgeThresholdPx = 50f
                 
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     
@@ -115,23 +114,22 @@ class MainComposeActivity : ComponentActivity() {
                             settings(onBackClick = { navController.popBackStack() })
                         }
                         
-                        // Transparent overlay for swipe detection
+                        // Swipe back detection overlay
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .pointerInput(Unit) {
-                                    var startX = 0f
                                     awaitEachGesture {
-                                        val down = awaitFirstDown(requireUnconsumed = false)
-                                        startX = down.position.x
+                                        val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                                        val startX = down.position.x
                                         
-                                        if (startX <= edgeThreshold) {
+                                        if (startX <= edgeThresholdPx) {
                                             var totalDrag = 0f
                                             do {
-                                                val event = awaitPointerEvent()
-                                                val change = event.changes.first()
+                                                val event = awaitPointerEvent(pass = PointerEventPass.Initial)
+                                                val change = event.changes.firstOrNull() ?: break
                                                 val drag = change.positionChange().x
-                                                if (drag > 0) { // Only track rightward drag
+                                                if (drag > 0) {
                                                     totalDrag += drag
                                                 }
                                                 change.consume()
@@ -143,9 +141,8 @@ class MainComposeActivity : ComponentActivity() {
                                                 }
                                             }
                                         } else {
-                                            // Consume all events to prevent interfering with other gestures
                                             do {
-                                                val event = awaitPointerEvent()
+                                                val event = awaitPointerEvent(pass = PointerEventPass.Initial)
                                                 event.changes.forEach { it.consume() }
                                             } while (event.changes.any { it.pressed })
                                         }
@@ -154,7 +151,7 @@ class MainComposeActivity : ComponentActivity() {
                         )
                     }
                     
-                    // Keep BackHandler for system back button compatibility
+                    // System back button compatibility
                     BackHandler(enabled = true) {
                         if (!navController.popBackStack()) {
                             finish()
