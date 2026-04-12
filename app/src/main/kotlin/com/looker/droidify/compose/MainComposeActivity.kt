@@ -6,20 +6,15 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.pointer.PointerEventPass
-import androidx.compose.ui.input.pointer.awaitPointerEvent
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.input.pointer.positionChange
-import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.rememberNavController
@@ -69,7 +64,6 @@ class MainComposeActivity : ComponentActivity() {
         setContent {
             DroidifyTheme {
                 val navController = rememberNavController()
-                val edgeThresholdPx = 50f
                 
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     
@@ -114,38 +108,39 @@ class MainComposeActivity : ComponentActivity() {
                             settings(onBackClick = { navController.popBackStack() })
                         }
                         
-                        // Swipe back detection overlay
+                        // Simple swipe back detection
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .pointerInput(Unit) {
-                                    awaitEachGesture {
-                                        val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
-                                        val startX = down.position.x
+                                    var startX = 0f
+                                    var startY = 0f
+                                    
+                                    while (true) {
+                                        val event = awaitPointerEvent(pass = PointerEventPass.Initial)
+                                        val change = event.changes.firstOrNull() ?: continue
                                         
-                                        if (startX <= edgeThresholdPx) {
-                                            var totalDrag = 0f
-                                            do {
-                                                val event = awaitPointerEvent(pass = PointerEventPass.Initial)
-                                                val change = event.changes.firstOrNull() ?: break
-                                                val drag = change.positionChange().x
-                                                if (drag > 0) {
-                                                    totalDrag += drag
-                                                }
-                                                change.consume()
-                                            } while (event.changes.any { it.pressed })
+                                        if (change.pressed && startX == 0f) {
+                                            startX = change.position.x
+                                            startY = change.position.y
+                                        }
+                                        
+                                        if (!change.pressed && startX != 0f) {
+                                            val endX = change.position.x
+                                            val deltaX = endX - startX
+                                            val deltaY = kotlin.math.abs(change.position.y - startY)
                                             
-                                            if (totalDrag > 100f) {
+                                            // Swipe right > 100px and not too much vertical movement
+                                            if (deltaX > 100 && deltaY < 200) {
                                                 if (!navController.popBackStack()) {
                                                     finish()
                                                 }
                                             }
-                                        } else {
-                                            do {
-                                                val event = awaitPointerEvent(pass = PointerEventPass.Initial)
-                                                event.changes.forEach { it.consume() }
-                                            } while (event.changes.any { it.pressed })
+                                            startX = 0f
+                                            startY = 0f
                                         }
+                                        
+                                        change.consume()
                                     }
                                 }
                         )
