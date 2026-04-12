@@ -1,5 +1,14 @@
 package com.looker.droidify.compose
 
+import androidx.activity.compose.PredictiveBackHandler
+import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalConfiguration
+import kotlin.math.roundToInt
+import kotlinx.coroutines.CancellationException
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
