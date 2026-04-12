@@ -1,16 +1,8 @@
 package com.looker.droidify.compose
 
-import androidx.activity.compose.PredictiveBackHandler
-import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.ui.unit.IntOffset
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.platform.LocalConfiguration
-import kotlin.math.roundToInt
-import kotlinx.coroutines.CancellationException
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.PredictiveBackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
@@ -40,6 +32,7 @@ import com.looker.droidify.data.RepoRepository
 import com.looker.droidify.model.Repository
 import com.looker.droidify.utility.common.requestNotificationPermission
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.CancellationException
 import javax.inject.Inject
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -73,6 +66,20 @@ class MainComposeActivity : ComponentActivity() {
                         navController = navController,
                         startDestination = AppList,
                     ) {
+                        // Predictive back gesture for Android 14+
+                        PredictiveBackHandler(enabled = true) { progressFlow ->
+                            try {
+                                progressFlow.collect { backEvent ->
+                                    // progress: 0f -> 1f as user swipes from edge
+                                }
+                                if (!navController.popBackStack()) {
+                                    finish()
+                                }
+                            } catch (e: CancellationException) {
+                                // Gesture cancelled, do nothing
+                            }
+                        }
+
                         home(
                             onNavigateToApps = { navController.navigateToAppList() },
                             onNavigateToRepos = { navController.navigateToRepoList() },
